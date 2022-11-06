@@ -51,25 +51,26 @@ def choosing_a_new_chain(msg, team, user_id):
     get_task(user_id, team)
 
 
-def check_answer(answer, team, user_id):
+def check_answer(answer_msg, team, user_id):
     try:
-        answer = answer.split('Ответ:')[1]
+        answer = answer_msg.text.split('Ответ:')[1]
         if answer == answer_list[team.current_chain][team.current_task]:
             bot.send_message(user_id, "Верно")
-            if team.current_task < len(answer_list[team.current_chain]):
+            if team.current_task < (len(answer_list[team.current_chain])-1):
                 team.current_task += 1
             else:
-                if team.chain_count < len(answer_list):
+                if team.chain_count < (len(answer_list)-1):
                     team.chain_count += 1
-                    msg = bot.reply_to(answer, "Выберите новую цепочку для прохождения")
+                    msg = bot.reply_to(answer_msg, "Выберите новую цепочку для прохождения")
                     bot.register_next_step_handler(msg, choosing_a_new_chain, team, user_id)
                 else:
                     # counting the results taking into account penalty points
                     team.time_end = time.time()
-                    teams_result_times.append(int(team.time_end - team.time_start) + team.penalty_points * 300)
+                    team_result = int(team.time_end - team.time_start) + team.penalty_points * 300
+                    teams_result_times.append(team_result)
                     teams_result_times.sort()
-                    ranking_place = teams_result_times.index(team.time_end) + 1
-                    bot.send_message(user_id, f'Молодец! Ты решил все задания за {team.end_time} секунды')
+                    ranking_place = teams_result_times.index(team_result) + 1
+                    bot.send_message(user_id, f'Молодец! Ты решил все задания!')
                     bot.send_message(user_id, f'Твое место в рейтинге: {ranking_place}')
         else:
             team.penalty_points += 1
@@ -82,6 +83,7 @@ def check_answer(answer, team, user_id):
 
 def new_team(name_msg, pin_code, user_id):
     new_user_team = Team(pin_code=pin_code, name=name_msg.text)
+    new_user_team.time_start = time.time()
     new_user_team.participants.append(user_id)
     teams_list.append(new_user_team)
 
@@ -117,7 +119,7 @@ def remember(message):
         # get_pin(user_id, message.text)
     else:
         if 'Ответ:' in message.text:
-            check_answer(message.text, users_team, user_id)
+            check_answer(message, users_team, user_id)
         elif 'Задание' in message.text:
             get_task(user_id, users_team)
         else:
@@ -127,7 +129,6 @@ def remember(message):
 bot.polling(none_stop=True)
 
 # TODO
-# 1.выбор цепочки
-# 2.только один штрафной бал за одно задание
-# 3.подсказки для заданий
-# 4.мб bot_help для разных этапов будет выглядеть по-разному, потому формат ответа может меняться
+# 1.только один штрафной бал за одно задание
+# 2.подсказки для заданий
+# 3.мб bot_help для разных этапов будет выглядеть по-разному, потому формат ответа может меняться
